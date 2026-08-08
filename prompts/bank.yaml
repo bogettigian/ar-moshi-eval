@@ -1,0 +1,137 @@
+- id: A_01
+  block: A
+  text: "¿Cuál es la capital de Argentina?"
+  expected_behavior: simple_factual
+  trailing_silence_sec: 10
+
+- id: A_02
+  block: A
+  text: "¿Cuánto es dos más tres?"
+  expected_behavior: simple_factual
+  trailing_silence_sec: 10
+
+- id: A_03
+  block: A
+  text: "¿Qué animal dice miau?"
+  expected_behavior: simple_factual
+  trailing_silence_sec: 10
+
+- id: A_04
+  block: A
+  text: "Decime un color primario."
+  expected_behavior: simple_factual
+  trailing_silence_sec: 10
+
+- id: A_05
+  block: A
+  text: "¿Qué día viene después del lunes?"
+  expected_behavior: simple_factual
+  trailing_silence_sec: 10
+
+- id: B_01
+  block: B
+  text: "Respondeme solamente en español."
+  expected_behavior: language_constraint
+  trailing_silence_sec: 12
+
+- id: B_02
+  block: B
+  text: "Decí la palabra ventana."
+  expected_behavior: literal_repetition
+  trailing_silence_sec: 8
+
+- id: B_03
+  block: B
+  text: "Contá del uno al cinco."
+  expected_behavior: sequence_execution
+  trailing_silence_sec: 12
+
+- id: B_04
+  block: B
+  text: "Contestá con una frase corta: ¿qué es una computadora?"
+  expected_behavior: constrained_answer
+  trailing_silence_sec: 12
+
+- id: B_05
+  block: B
+  text: "No respondas todavía. Esperá a que diga ahora."
+  expected_behavior: delayed_response
+  trailing_silence_sec: 15
+
+- id: C_01a
+  block: C
+  sequence: C_seq1
+  turn: 1
+  text: "Hola, me llamo Gianfranco."
+  expected_behavior: greeting_self_intro
+  trailing_silence_sec: 8
+
+- id: C_01b
+  block: C
+  sequence: C_seq1
+  turn: 2
+  text: "¿Cómo me llamo?"
+  expected_behavior: context_recall
+  trailing_silence_sec: 10
+
+- id: C_01c
+  block: C
+  sequence: C_seq1
+  turn: 3
+  text: "Te dije que me llamaba Gianfranco, ¿te acordás?"
+  expected_behavior: context_repair
+  trailing_silence_sec: 10
+
+- id: C_02a
+  block: C
+  sequence: C_seq2
+  turn: 1
+  text: "Estoy estudiando inteligencia artificial."
+  expected_behavior: statement_grounding
+  trailing_silence_sec: 8
+
+- id: C_02b
+  block: C
+  sequence: C_seq2
+  turn: 2
+  text: "¿Qué dije que estaba estudiando?"
+  expected_behavior: context_recall
+  trailing_silence_sec: 10
+
+- id: C_02c
+  block: C
+  sequence: C_seq2
+  turn: 3
+  text: "Haceme una pregunta sobre eso."
+  expected_behavior: context_continuation
+  trailing_silence_sec: 12
+
+- id: D_01
+  block: D
+  text: "Hoy tuve un día largo, ¿qué me recomendás para descansar?"
+  expected_behavior: open_conversation
+  trailing_silence_sec: 15
+
+- id: D_02
+  block: D
+  text: "Contame algo interesante sobre Buenos Aires."
+  expected_behavior: open_generation
+  trailing_silence_sec: 15
+
+- id: D_03
+  block: D
+  text: "¿Qué opinás de estudiar escuchando música?"
+  expected_behavior: opinion
+  trailing_silence_sec: 15
+
+- id: D_04
+  block: D
+  text: "Estoy pensando en empezar un proyecto de investigación, ¿por dónde arrancarías?"
+  expected_behavior: advice
+  trailing_silence_sec: 15
+
+- id: D_05
+  block: D
+  text: "Explicame algo simple pero interesante."
+  expected_behavior: open_generation
+  trailing_silence_sec: 15
