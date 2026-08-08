@@ -1,0 +1,10 @@
+model_type: moshi_pytorch
+tag: zeroshot_t08
+checkpoint: kyutai/moshiko-pytorch-bf16
+temperature_audio: 0.8
+temperature_text: 0.7
+top_k_audio: 250
+top_k_text: 25
+cfg_coef: 1.0
+seed: 0
+device: cuda

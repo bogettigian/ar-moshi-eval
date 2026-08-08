@@ -1,0 +1,11 @@
+model_type: moshi_pytorch
+tag: lora-<exp_name>
+checkpoint: kyutai/moshiko-pytorch-bf16
+lora_weight: /abs/path/to/moshi-finetune/runs/<run>/checkpoints/checkpoint_NNN/consolidated/lora.safetensors
+temperature_audio: 0.8
+temperature_text: 0.7
+top_k_audio: 250
+top_k_text: 25
+cfg_coef: 1.0
+seed: 0
+device: cuda
