@@ -1,0 +1,25 @@
+[project]
+name = "ar-moshi-eval"
+version = "0.1.0"
+description = "AR Moshi Eval"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "coqui-tts>=0.26.2",
+    "torch>=2.9.1,<2.10",
+    "torchaudio>=2.9.1,<2.10",
+    "transformers>=4.50.3",
+    "pyyaml>=6.0.3",
+    "pandas>=2.2",
+    "soundfile>=0.13.1",
+    "numpy>=2.2.6",
+    "moshi>=0.2.13",
+    "sphn>=0.2.1",
+    "sentencepiece>=0.2.0",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["src"]
