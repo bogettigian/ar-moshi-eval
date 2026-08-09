@@ -238,8 +238,4 @@ live_sessions/*/recording.wav
 reports/comparison_*.csv
 logs/
 
-# Project state and research notes. Deliberate decision (2026-08-08): docs live
-# on disk only and are not versioned. To make them travel to a clone or to the
-# cloud machine, drop this line (the PDFs under docs/papers/ would still need
-# their own rule, they are large).
 docs/
