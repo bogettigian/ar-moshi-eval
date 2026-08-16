@@ -27,6 +27,16 @@ def load_run(run_dir: Path) -> pd.DataFrame:
 
 
 METRIC_COLUMNS = ("naturalness", "meaningfulness", "ppl")
+LANGUAGE_COLUMN = "lang_detected"
+SPANISH_LABEL = "es"
+
+
+def share_spanish(labels: pd.Series) -> float:
+    known = labels.dropna().astype(str).str.strip()
+    known = known[known != ""]
+    if known.empty:
+        return float("nan")
+    return 100.0 * float((known == SPANISH_LABEL).mean())
 
 
 def aggregate(df: pd.DataFrame) -> pd.DataFrame:
@@ -36,6 +46,8 @@ def aggregate(df: pd.DataFrame) -> pd.DataFrame:
             numeric[col] = pd.to_numeric(numeric[col], errors="coerce")
         else:
             numeric[col] = float("nan")
+    if LANGUAGE_COLUMN not in numeric.columns:
+        numeric[LANGUAGE_COLUMN] = None
 
     out = numeric.groupby(["run_id", "block"], dropna=False).agg(
         n=("prompt_id", "size"),
@@ -43,6 +55,7 @@ def aggregate(df: pd.DataFrame) -> pd.DataFrame:
         mean_meaningfulness=("meaningfulness", "mean"),
         mean_ppl=("ppl", "mean"),
         median_ppl=("ppl", "median"),
+        pct_spanish=(LANGUAGE_COLUMN, share_spanish),
     )
     return out.reset_index()
 

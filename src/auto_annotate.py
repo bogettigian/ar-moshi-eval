@@ -20,9 +20,16 @@ AUTO_METRICS_COLUMNS = [
     "block",
     "transcript_asr",
     "ppl",
+    "lang_detected",
+    "lang_confidence",
     "asr_model",
     "lm_model",
+    "lang_id_model",
 ]
+
+# Models whose identity invalidates a cached row: if any of them changed since
+# the row was written, the row has to be recomputed.
+MODEL_COLUMNS = ("asr_model", "lm_model", "lang_id_model")
 
 
 def pick_device_and_dtype() -> tuple[str, torch.dtype]:
@@ -37,6 +44,17 @@ def transcribe(asr_pipe, wav_path: Path) -> str:
     out = asr_pipe(str(wav_path))
     text = out.get("text") if isinstance(out, dict) else None
     return (text or "").strip()
+
+
+def detect_language(lang_pipe, text: str) -> tuple[str, float]:
+    if not text:
+        return "", float("nan")
+    out = lang_pipe(text, truncation=True, max_length=512)
+    if isinstance(out, list):
+        out = out[0]
+    if isinstance(out, list):  # top_k > 1 returns a list per input
+        out = out[0]
+    return str(out["label"]), float(out["score"])
 
 
 def compute_ppl(lm_tokenizer, lm_model, text: str) -> float:
@@ -66,6 +84,7 @@ def main() -> int:
     parser.add_argument("--run-dir", required=True, type=Path, help="Path to runs/<id>/.")
     parser.add_argument("--asr-model", default="openai/whisper-large-v3", help=f"HF repo id of the ASR model. Default: openai/whisper-large-v3.")
     parser.add_argument("--lm-model", default="BSC-LT/salamandra-2b", help=f"HF repo id of the causal LM used to compute PPL. Default: BSC-LT/salamandra-2b.")
+    parser.add_argument("--lang-id-model", default="papluca/xlm-roberta-base-language-detection", help="HF repo id of the text classifier used to label the transcript's language. Default: papluca/xlm-roberta-base-language-detection.")
     parser.add_argument("--bank", type=Path, default=Path("./prompts/bank.yaml"), help="Path to the prompt bank.")
     parser.add_argument("--force", action="store_true", help="Recompute every row even if auto_metrics.csv already has it.")
     args = parser.parse_args()
@@ -88,7 +107,8 @@ def main() -> int:
         if not (outputs_dir / pid / "response.wav").exists():
             continue
         row = existing.get(pid)
-        if row and row.get("asr_model") == args.asr_model and row.get("lm_model") == args.lm_model:
+        requested = (args.asr_model, args.lm_model, args.lang_id_model)
+        if row and tuple(row.get(col) for col in MODEL_COLUMNS) == requested:
             continue
         todo.append(pid)
 
@@ -113,21 +133,34 @@ def main() -> int:
     lm_model.to(device)
     lm_model.eval()
 
+    logger.info(f"Loading language ID: {args.lang_id_model}")
+    lang_pipe = pipeline(
+        "text-classification",
+        model=args.lang_id_model,
+        device=device,
+        torch_dtype=dtype,
+    )
+
     rows: dict[str, dict] = {} if args.force else dict(existing)
     t0 = time.time()
     for i, pid in enumerate(todo, 1):
         wav_path = outputs_dir / pid / "response.wav"
         transcript = transcribe(asr_pipe, wav_path)
         ppl = compute_ppl(lm_tokenizer, lm_model, transcript)
+        lang, lang_conf = detect_language(lang_pipe, transcript)
         ppl_str = f"ppl={ppl:.1f}" if not math.isnan(ppl) else "ppl=nan"
-        logger.info(f"  [{i}/{len(todo)}] {pid} — {ppl_str}")
+        lang_str = f"lang={lang} ({lang_conf:.2f})" if lang else "lang=none"
+        logger.info(f"  [{i}/{len(todo)}] {pid} — {ppl_str} {lang_str}")
         rows[pid] = {
             "prompt_id": pid,
             "block": block_of.get(pid, ""),
             "transcript_asr": transcript,
             "ppl": "" if math.isnan(ppl) else f"{ppl:.4f}",
+            "lang_detected": lang,
+            "lang_confidence": "" if math.isnan(lang_conf) else f"{lang_conf:.4f}",
             "asr_model": args.asr_model,
             "lm_model": args.lm_model,
+            "lang_id_model": args.lang_id_model,
         }
 
     with metrics_path.open("w", newline="") as f:
