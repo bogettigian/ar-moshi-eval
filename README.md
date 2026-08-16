@@ -16,7 +16,7 @@ runs/<id>/               # one run = one (checkpoint × backend × temperatures 
   auto_metrics.csv       # ASR transcript + Spanish-LM perplexity + language
   annotations.csv        # human Likert 1-5 on naturalness + meaningfulness,
                          # filled in by hand after listening
-reports/                 # comparison CSVs produced by score_runs.py
+reports/                 # per-block + per-prompt comparison CSVs (score_runs.py)
 reports/mimi_resynth/    # Mimi re-synthesis check: CSV + before/after wavs
 live_sessions/           # interactive full-duplex sessions (Block E, TODO)
 src/
@@ -129,13 +129,30 @@ start.
 4. **Annotate by hand** the subjective columns in `runs/<id>/annotations.csv`
    (`naturalness`, `meaningfulness`) while listening to the wavs.
 
-5. **Compare runs** (e.g. zero-shot vs LoRA vs fine-tune):
+5. **Compare runs** (e.g. zero-shot vs LoRA vs fine-tune). The **first run given
+   is the baseline** and every other one is compared against it:
 
    ```bash
    python -m src.score_runs \
      runs/<zeroshot_run> \
      runs/<lora_run>
    ```
+
+   It writes two CSVs and prints a summary:
+
+   - `reports/comparison_<ts>.csv` — the per-block view: `mean_naturalness`,
+     `mean_meaningfulness`, `mean_ppl`, `median_ppl`, `pct_spanish`.
+   - `reports/comparison_<ts>_per_prompt.csv` — **which prompts changed and how**.
+     One row per (prompt, run) with the four signals side by side against the
+     baseline, plus a `verdict`. Sorted with the regressions first, because what
+     a rung broke is more interesting than what it fixed. A rising block average
+     can hide a rung that fixed fourteen prompts and broke three.
+
+   A prompt counts as improved or regressed per signal: any movement on the
+   Likert columns, a **relative** change in PPL beyond `--ppl-tolerance`
+   (default 0.10 — a delta of 5 on PPL 850 is noise, on PPL 40 it is not), and
+   for the language, moving into or out of Spanish. Improvements on some signals
+   and regressions on others are reported as `mixed` rather than averaged away.
 
 ## Per-run `config.yaml`
 
