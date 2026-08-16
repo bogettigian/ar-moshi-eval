@@ -74,6 +74,7 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="Create the run dir and annotations.csv without loading the model.")
     parser.add_argument("--bank", type=Path, default=Path("./prompts/bank.yaml"), help="Path to the prompt bank.")
     parser.add_argument("--wav", type=Path, default=Path("./prompts/wav"), help="Path to the wav output dir.")
+    parser.add_argument("--run-dir", type=Path, default=None, help="Where to write the run. Defaults to runs/<timestamp>_<tag>_seed<seed>/; pass it explicitly when a caller needs to know the path up front.")
     args = parser.parse_args()
 
     with args.config.open() as f:
@@ -83,8 +84,11 @@ def main() -> int:
     with args.bank.open() as f:
         bank = yaml.safe_load(f)
 
-    stamp = dt.datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    run_dir = Path(f"./runs/{stamp}_{cfg.tag}_seed{cfg.seed}")
+    if args.run_dir is not None:
+        run_dir = args.run_dir
+    else:
+        stamp = dt.datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        run_dir = Path(f"./runs/{stamp}_{cfg.tag}_seed{cfg.seed}")
     run_dir.mkdir(parents=True, exist_ok=False)
 
     (run_dir / "config.yaml").write_text(args.config.read_text())

@@ -13,15 +13,17 @@ runs_config/             # per-run config templates (zero_shot, post_lora)
 runs/<id>/               # one run = one (checkpoint × backend × temperatures × seed)
   config.yaml            # run parameters
   outputs/<prompt_id>/   # response.wav, text_tokens.txt, output.json
-  auto_metrics.csv       # ASR transcript + Spanish-LM perplexity
+  auto_metrics.csv       # ASR transcript + Spanish-LM perplexity + language
   annotations.csv        # human Likert 1-5 on naturalness + meaningfulness,
                          # filled in by hand after listening
 reports/                 # comparison CSVs produced by score_runs.py
+reports/mimi_resynth/    # Mimi re-synthesis check: CSV + before/after wavs
 live_sessions/           # interactive full-duplex sessions (Block E, TODO)
 src/
   synth_prompts.py       # generate prompt wavs with XTTS v2
   run_eval.py            # run a model over the bank
-  auto_annotate.py       # ASR + perplexity per response
+  auto_annotate.py       # ASR + perplexity + language ID per response
+  mimi_resynth.py        # how much the Mimi codec costs on Spanish audio
   score_runs.py          # aggregate metrics across runs
   models/
     base.py              # ModelRunner protocol + PromptOutput dataclass
@@ -42,9 +44,20 @@ docs/                    # project state + research notes (gitignored, local onl
   - `transcript_asr` from Whisper large-v3.
   - `ppl` of a Spanish causal LM (default `BSC-LT/salamandra-2b`) over the
     ASR transcript. High PPL = low Spanish fluency in the response.
+  - `lang_detected` / `lang_confidence`: which language the response is in,
+    classified over the transcript rather than the audio — the question is what
+    the text head wrote. `score_runs` turns this into `pct_spanish` per block.
+    Unlike the two above, this one is not from the reference protocol: it exists
+    because the acceptance criterion for the ladder is stated in those terms.
 - **Human** (`annotations.csv`):
   - `naturalness` (1–5 Likert): how natural the dialogue sounds.
   - `meaningfulness` (1–5 Likert): how well the speech can be understood.
+
+Separately, `src.mimi_resynth` measures what the frozen Mimi codec costs on
+Spanish audio: it encodes and decodes real corpus episodes and reports the PPL
+delta and the WER between the two transcripts. Mimi is reused as-is from the
+English checkpoint at every rung of the ladder, so if it mangles Rioplatense
+Spanish, nothing trained downstream can recover it.
 
 ## Bank
 
@@ -69,7 +82,16 @@ start.
 
 ## Flow
 
-1. **Synthesize the prompts to wav** (idempotent; use `--force` to regenerate):
+1. **Get the prompt wavs.** They are the frozen test set: gitignored, and XTTS
+   is not deterministic, so re-synthesizing them would give each run a slightly
+   different bank. Pull the frozen copy instead, and check it against the
+   sha256 listing stored next to it:
+
+   ```bash
+   aws s3 sync s3://ar-moshi-corpus/eval/prompts/wav prompts/wav
+   ```
+
+   Only synthesize when adding prompts to the bank — and re-freeze afterwards:
 
    ```bash
    python -m src.synth_prompts
@@ -83,16 +105,26 @@ start.
    ```
 
    Use `--dry-run` to create the run dir + empty `annotations.csv` without
-   loading the model.
+   loading the model, and `--run-dir` to name the run instead of taking the
+   default timestamped one (which is what the EC2 stages do, so the command
+   after it knows where to look).
 
-3. **Auto-annotate** (ASR + Spanish-LM perplexity):
+3. **Auto-annotate** (ASR + Spanish-LM perplexity + language):
 
    ```bash
    python -m src.auto_annotate --run-dir runs/<id>/
    ```
 
-   Idempotent; pass `--force` to recompute. Override models with
-   `--asr-model` / `--lm-model` (defaults: Whisper large-v3, Salamandra-2b).
+   Idempotent; pass `--force` to recompute. Rows are recomputed automatically
+   when any of the three models changes. Override them with `--asr-model` /
+   `--lm-model` / `--lang-id-model` (defaults: Whisper large-v3, Salamandra-2b,
+   xlm-roberta language detection).
+
+   Once per checkpoint of Mimi — not per run — measure the codec's own cost:
+
+   ```bash
+   python -m src.mimi_resynth data/stereo --limit 5
+   ```
 
 4. **Annotate by hand** the subjective columns in `runs/<id>/annotations.csv`
    (`naturalness`, `meaningfulness`) while listening to the wavs.
